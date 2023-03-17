@@ -1,87 +1,20 @@
-import uuid
-from flask import Flask, request
-from flask_smorest import abort
-from db import items, stores
+from flask import Flask
+from flask_smorest import Api
+
+from resources.item import blp as ItemBlueprint
+from resources.store import blp as StoreBlueprint
 
 app = Flask(__name__)
 
+app.config["PROPAGATE_EXCEPTIONS"] = True
+app.config["API_TITLE"] = "Stores Flask Smorest API"
+app.config["API_VERSION"] = "1.0"
+app.config["OPENAPI_VERSION"] = "3.0.3"
+app.config["OPENAPI_URL_PREFIX"] = "/"
+app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui/"
+app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
 
-@app.get("/store")
-def get_stores():
-    return {'stores': list(stores.values())}
+api = Api(app)
 
-
-@app.post("/store")
-def create_store():
-    # get the request data
-    store_data = request.get_json()
-
-    # If name is not provided, abort
-    if "name" not in store_data:
-        abort(400, message="Bad request. Please provide 'name' in JSON payload.")
-
-    # If same store already exists, abort
-    for store in stores.values():
-        if store['name'] == store_data['name']:
-            abort(400, message="Store already exists")
-
-    store_id = uuid.uuid4().hex
-    # create a variable to store the new store
-    new_store = {**store_data, "id": store_id}
-    # append the new store to the stores list
-    stores[store_id] = new_store
-    # return the new store
-    return new_store, 201
-
-
-@app.post("/item")
-def create_item():
-    # get the request data
-    item_data = request.get_json()
-
-    if(
-        "price" not in item_data or
-        "store_id" not in item_data or
-        "name" not in item_data
-    ) :
-        abort(400, message="Bad request. Please provide 'price', 'store_id' and 'name' in JSON payload.")
-
-    store_id = item_data.get('store_id', None)
-
-    # If store_id is not provided or store_id is not in stores
-    if not store_id or store_id not in stores:
-        abort(404, message="Store not found")
-
-    # If same item in same store already exists, abort
-    for item in items.values():
-        if item['name'] == item_data['name'] and item['store_id'] == store_id:
-            abort(400, message="Item already exists in this store")
-
-    item_id = uuid.uuid4().hex
-    # create a variable to store the new item
-    new_item = {**item_data, "id": item_id}
-    # append the new item to the items list
-    items[item_id] = new_item
-    # return the new item
-    return new_item, 201
-
-
-@app.get("/item")
-def get_all_items():
-    return {"items": list(items.values())}
-
-
-@app.get("/store/<string:store_id>")
-def get_store(store_id):
-    store = stores.get(store_id, None)
-    if store:
-        return store
-    abort(404, message="Store not found")
-
-
-@app.get("/item/<string:item_id>")
-def get_item(item_id):
-    item = items.get(item_id, None)
-    if item:
-        return item
-    abort(404, message="Item not found")
+api.register_blueprint(ItemBlueprint)
+api.register_blueprint(StoreBlueprint)
