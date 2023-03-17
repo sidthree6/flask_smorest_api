@@ -16,6 +16,15 @@ def create_store():
     # get the request data
     store_data = request.get_json()
 
+    # If name is not provided, abort
+    if "name" not in store_data:
+        abort(400, message="Bad request. Please provide 'name' in JSON payload.")
+
+    # If same store already exists, abort
+    for store in stores.values():
+        if store['name'] == store_data['name']:
+            abort(400, message="Store already exists")
+
     store_id = uuid.uuid4().hex
     # create a variable to store the new store
     new_store = {**store_data, "id": store_id}
@@ -30,11 +39,23 @@ def create_item():
     # get the request data
     item_data = request.get_json()
 
+    if(
+        "price" not in item_data or
+        "store_id" not in item_data or
+        "name" not in item_data
+    ) :
+        abort(400, message="Bad request. Please provide 'price', 'store_id' and 'name' in JSON payload.")
+
     store_id = item_data.get('store_id', None)
 
     # If store_id is not provided or store_id is not in stores
     if not store_id or store_id not in stores:
         abort(404, message="Store not found")
+
+    # If same item in same store already exists, abort
+    for item in items.values():
+        if item['name'] == item_data['name'] and item['store_id'] == store_id:
+            abort(400, message="Item already exists in this store")
 
     item_id = uuid.uuid4().hex
     # create a variable to store the new item
